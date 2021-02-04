@@ -23,6 +23,10 @@ export default class CreateTransaction1610387992514
             type: 'varchar',
           },
           {
+            name: 'value',
+            type: 'decimal',
+          },
+          {
             name: 'category_id',
             type: 'uuid',
           },

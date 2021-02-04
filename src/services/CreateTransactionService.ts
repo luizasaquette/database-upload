@@ -9,7 +9,7 @@ import TransactionsRepository from '../repositories/TransactionsRepository';
 
 interface Request {
   title: string;
-  value: string;
+  value: number;
   type: 'income' | 'outcome';
   category: string;
 }
@@ -19,7 +19,7 @@ class CreateTransactionService {
     value,
     type,
     category,
-  }: Request): Promise<void> {
+  }: Request): Promise<Transaction> {
     const transactionsRepository = getCustomRepository(TransactionsRepository);
     const categoriesRepository = getRepository(Category);
 
@@ -27,32 +27,41 @@ class CreateTransactionService {
       throw new AppError('Transaction type is invalid');
     }
 
+    const { total } = await transactionsRepository.getBalance();
+
+    if (type === 'outcome' && value > total) {
+      throw new AppError('You do not have enough balance!', 400);
+    }
+
     // Validação de categoria existente
     const foundCategory = await categoriesRepository.findOne({
       where: { title: category },
     });
 
-    let category_id;
+    let transactionCategory;
 
-    if (foundCategory) {
-      category_id = foundCategory.id;
-    } else {
-      const newCategory = await categoriesRepository.create({
+    if (!foundCategory) {
+      const newCategory = categoriesRepository.create({
         title: category,
       });
-      category_id = newCategory.id;
+
+      await categoriesRepository.save(newCategory);
+
+      transactionCategory = newCategory;
+    } else {
+      transactionCategory = foundCategory;
     }
 
-    console.log(typeof category_id);
+    const transaction = transactionsRepository.create({
+      title,
+      value,
+      type,
+      category: transactionCategory,
+    });
 
-    // const transaction = transactionsRepository.create({
-    //   title,
-    //   value,
-    //   type,
-    //   category_id,
-    // });
+    await transactionsRepository.save(transaction);
 
-    // await transactionsRepository.save(transaction);
+    return transaction;
   }
 }
 
